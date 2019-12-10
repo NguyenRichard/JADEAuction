@@ -1,14 +1,14 @@
 /*****************************************************************
-JADE - Java Agent DEvelopment Framework is a framework to develop 
+JADE - Java Agent DEvelopment Framework is a framework to develop
 multi-agent systems in compliance with the FIPA specifications.
-Copyright (C) 2000 CSELT S.p.A. 
+Copyright (C) 2000 CSELT S.p.A.
 
 GNU Lesser General Public License
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation, 
-version 2.1 of the License. 
+License as published by the Free Software Foundation,
+version 2.1 of the License.
 
 This library is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,7 +21,7 @@ Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA  02111-1307, USA.
  *****************************************************************/
 
-package examples.JINProject;
+package examples.JADEAuction;
 
 import jade.core.Agent;
 import jade.core.AID;
@@ -60,7 +60,7 @@ public class JINBuyerAgent extends Agent {
 					sd.setType("book-selling");
 					template.addServices(sd);
 					try {
-						DFAgentDescription[] result = DFService.search(myAgent, template); 
+						DFAgentDescription[] result = DFService.search(myAgent, template);
 						System.out.println("Found the following seller agents:");
 						sellerAgents = new AID[result.length];
 						for (int i = 0; i < result.length; ++i) {
@@ -92,11 +92,11 @@ public class JINBuyerAgent extends Agent {
 
 	/**
 	   Inner class RequestPerformer.
-	   This is the behaviour used by Book-buyer agents to request seller 
+	   This is the behaviour used by Book-buyer agents to request seller
 	   agents the target book.
 	 */
 	private class RequestPerformer extends Behaviour {
-		private AID bestSeller; // The agent who provides the best offer 
+		private AID bestSeller; // The agent who provides the best offer
 		private int bestPrice;  // The best offered price
 		private int repliesCnt = 0; // The counter of replies from seller agents
 		private MessageTemplate mt; // The template to receive replies
@@ -109,7 +109,7 @@ public class JINBuyerAgent extends Agent {
 				ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
 				for (int i = 0; i < sellerAgents.length; ++i) {
 					cfp.addReceiver(sellerAgents[i]);
-				} 
+				}
 				cfp.setContent(targetBookTitle);
 				cfp.setConversationId("book-trade");
 				cfp.setReplyWith("cfp"+System.currentTimeMillis()); // Unique value
@@ -125,7 +125,7 @@ public class JINBuyerAgent extends Agent {
 				if (reply != null) {
 					// Reply received
 					if (reply.getPerformative() == ACLMessage.PROPOSE) {
-						// This is an offer 
+						// This is an offer
 						int price = Integer.parseInt(reply.getContent());
 						if (bestSeller == null || price < bestPrice) {
 							// This is the best offer at present
@@ -136,7 +136,7 @@ public class JINBuyerAgent extends Agent {
 					repliesCnt++;
 					if (repliesCnt >= sellerAgents.length) {
 						// We received all replies
-						step = 2; 
+						step = 2;
 					}
 				}
 				else {
@@ -156,7 +156,7 @@ public class JINBuyerAgent extends Agent {
 						MessageTemplate.MatchInReplyTo(order.getReplyWith()));
 				step = 3;
 				break;
-			case 3:      
+			case 3:
 				// Receive the purchase order reply
 				reply = myAgent.receive(mt);
 				if (reply != null) {
@@ -177,7 +177,7 @@ public class JINBuyerAgent extends Agent {
 					block();
 				}
 				break;
-			}        
+			}
 		}
 
 		public boolean done() {
