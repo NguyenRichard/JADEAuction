@@ -32,12 +32,22 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
+import java.util.List;
 
 public class JINBuyerAgent extends Agent {
 	// The title of the book to buy
-	private String targetBookTitle;
-	// The list of known seller agents
-	private AID[] sellerAgents;
+	private List<Item> itemsToBuy; 
+
+	private float newItemRatio; //Ratio price from Initial price when the state is new.
+
+	private float goodItemRatio; //Ratio price from Initial price when the state is good.
+
+	private float usedItemRatio; //Ratio price from Initial price when the state is used.
+
+	private float probabilityPayMore; //Probability to pay more
+
+	private float satisfaction; //Value from 0 to 100 to describe the satisfaction of the user.
+
 
 	// Put agent initializations here
 	protected void setup() {
@@ -83,6 +93,7 @@ public class JINBuyerAgent extends Agent {
 			doDelete();
 		}
 	}
+
 
 	// Put agent clean-up operations here
 	protected void takeDown() {
