@@ -40,38 +40,43 @@ public class JINSellerAgent extends Agent {
 	// The GUI by means of which the user can add books in the catalogue
 	//private BookSellerGui myGui;
 
+	Item itemToSell;
+
+	private AID[] buyerAgents;
+
 	// Put agent initializations here
 	protected void setup() {
-		// Create the catalogue
-		catalogue = new Hashtable();
+		//initialiser l'objet à vendre.
+		
+		addBehaviour(new TickerBehaviour(this, 10000) {
+			protected void onTick() {
+				System.out.println("Trying to sell "+itemToSell.name);
+				// Update the list of seller agents
+				DFAgentDescription template = new DFAgentDescription();
+				ServiceDescription sd = new ServiceDescription();
+				sd.setType("selling");
+				template.addServices(sd);
+				try {
+					DFAgentDescription[] result = DFService.search(myAgent, template); 
+					System.out.println("Found the following buyer agents:");
+					buyerAgents = new AID[result.length];
+					for (int i = 0; i < result.length; ++i) {
+						buyerAgents[i] = result[i].getName();
+						System.out.println(buyerAgents[i].getName());
+					}
+				}
+				catch (FIPAException fe) {
+					fe.printStackTrace();
+				}
 
-		// Create and show the GUI
-		//myGui = new BookSellerGui(this);
-		//myGui.showGui();
-
-		// Register the book-selling service in the yellow pages
-		DFAgentDescription dfd = new DFAgentDescription();
-		dfd.setName(getAID());
-		ServiceDescription sd = new ServiceDescription();
-		sd.setType("book-selling");
-		sd.setName("JADE-book-trading");
-		dfd.addServices(sd);
-		try {
-			DFService.register(this, dfd);
-		}
-		catch (FIPAException fe) {
-			fe.printStackTrace();
-		}
-
-		// Add the behaviour serving queries from buyer agents
-		addBehaviour(new OfferRequestsServer());
-
-		// Add the behaviour serving purchase orders from buyer agents
-		addBehaviour(new PurchaseOrdersServer());
+				// Perform the request
+				myAgent.addBehaviour(new RequestPerformer());
+			}
+		});
 	}
 
 	// Put agent clean-up operations here
-	protected void takeDown() {
+	/*protected void takeDown() {
 		// Deregister from the yellow pages
 		try {
 			DFService.deregister(this);
@@ -83,88 +88,104 @@ public class JINSellerAgent extends Agent {
 		//myGui.dispose();
 		// Printout a dismissal message
 		System.out.println("Seller-agent "+getAID().getName()+" terminating.");
-	}
-
+	}*/
 	/**
-     This is invoked by the GUI when the user adds a new book for sale
+	   Inner class RequestPerformer.
+	   This is the behaviour used by Book-buyer agents to request seller 
+	   agents the target book.
 	 */
-	public void updateCatalogue(final String title, final int price) {
-		addBehaviour(new OneShotBehaviour() {
-			public void action() {
-				catalogue.put(title, new Integer(price));
-				System.out.println(title+" inserted into catalogue. Price = "+price);
-			}
-		} );
-	}
+	private class RequestPerformer extends Behaviour {
+		private AID bestBuyer; // The agent who provides the best offer 
+		private int bestPrice;  // The best offered price
+		private List<AID> interestedBuyers = new List<AID>();
+		private bool auctionIsOn; // The auction is currently running if true
+		private MessageTemplate mt; // The template to receive replies
+		private int step = 0;
+		private int repliesCnt = 0; // The counter of replies from interested agents.
 
-	/**
-	   Inner class OfferRequestsServer.
-	   This is the behaviour used by Book-seller agents to serve incoming requests
-	   for offer from buyer agents.
-	   If the requested book is in the local catalogue the seller agent replies
-	   with a PROPOSE message specifying the price. Otherwise a REFUSE message is
-	   sent back.
-	 */
-	private class OfferRequestsServer extends CyclicBehaviour {
 		public void action() {
-			MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
-			ACLMessage msg = myAgent.receive(mt);
-			if (msg != null) {
-				// CFP Message received. Process it
-				String title = msg.getContent();
-				ACLMessage reply = msg.createReply();
+			switch (step) {
+			case 0:
+				auctionIsOn = true;
+				// Send the propose to all buyers
+				ACLMessage propose = new ACLMessage(ACLMessage.PROPOSE);
+				for (int i = 0; i < buyerAgents.length; ++i) {
+					propose.addReceiver(buyerAgents[i]);
+					interestedBuyers.add(buyersAgents[i].getAID());
+				} 
+				propose.setContentObject(itemToSell);
+				propose.setConversationId("item-auction");
+				propose.setReplyWith("propose"+System.currentTimeMillis()); // Unique value
+				myAgent.send(propose);
+				// Prepare the template to get proposals
+				mt = MessageTemplate.and(MessageTemplate.MatchConversationId("item-auction"),
+						MessageTemplate.MatchInReplyTo(propose.getReplyWith()));
+				step = 1;
+				Thread t = new Thread(new Runnable(){
+					@Override public void run(){
+						Thread.sleep(10000);
+						auctionIsOn = false;
+					}
+				});
 
-				Integer price = (Integer) catalogue.get(title);
-				if (price != null) {
-					// The requested book is available for sale. Reply with the price
-					reply.setPerformative(ACLMessage.PROPOSE);
-					reply.setContent(String.valueOf(price.intValue()));
+				break;
+			case 1:
+				// Receive all proposals from buyer agents
+				ACLMessage reply = myAgent.receive(mt);
+				if (reply != null) {
+					// Reply received
+					if (reply.getPerformative() == ACLMessage.PROPOSE) {
+						// This is an offer 
+						int price = Integer.parseInt(reply.getContent());
+						if(price < 0){
+							interestedBuyers.remove(reply.getSender().getAID());
+						}
+						if (price > bestPrice) {
+							// This is the best offer at present
+							bestPrice = price;
+							bestBuyer = reply.getSender().getAID();
+							itemToSell.bestBuyer = bestBuyer;
+						}
+					}
+
+					repliesCnt++;
+					if (repliesCnt >= sellerAgents.length) {
+						// We received all replies
+						step = 2; 
+					}
 				}
 				else {
-					// The requested book is NOT available for sale.
-					reply.setPerformative(ACLMessage.REFUSE);
-					reply.setContent("not-available");
+					block();
 				}
-				myAgent.send(reply);
-			}
-			else {
-				block();
-			}
-		}
-	}  // End of inner class OfferRequestsServer
+				break;
+			case 2:
 
-	/**
-	   Inner class PurchaseOrdersServer.
-	   This is the behaviour used by Book-seller agents to serve incoming
-	   offer acceptances (i.e. purchase orders) from buyer agents.
-	   The seller agent removes the purchased book from its catalogue
-	   and replies with an INFORM message to notify the buyer that the
-	   purchase has been sucesfully completed.
-	 */
-	private class PurchaseOrdersServer extends CyclicBehaviour {
-		public void action() {
-			MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
-			ACLMessage msg = myAgent.receive(mt);
-			if (msg != null) {
-				// ACCEPT_PROPOSAL Message received. Process it
-				String title = msg.getContent();
-				ACLMessage reply = msg.createReply();
+				repliesCnt = 0;
 
-				Integer price = (Integer) catalogue.remove(title);
-				if (price != null) {
-					reply.setPerformative(ACLMessage.INFORM);
-					System.out.println(title+" sold to agent "+msg.getSender().getName());
+				// Send the cfp to all sellers
+				ACLMessage propose = new ACLMessage(ACLMessage.PROPOSE);
+				for (int i = 0; i < interestedBuyers.length; ++i) {
+					propose.addReceiver(interestedBuyers[i]);
+				} 
+				propose.setContentObject(itemToSell);
+				propose.setConversationId("item-auction");
+				propose.setReplyWith("propose"+System.currentTimeMillis()); // Unique value
+				myAgent.send(propose);
+				// Prepare the template to get proposals
+				mt = MessageTemplate.and(MessageTemplate.MatchConversationId("item-auction"),
+						MessageTemplate.MatchInReplyTo(propose.getReplyWith()));
+
+				if(!auctionIsOn){
+					step = 3;
 				}
-				else {
-					// The requested book has been sold to another buyer in the meanwhile .
-					reply.setPerformative(ACLMessage.FAILURE);
-					reply.setContent("not-available");
+				else{
+					step = 1;
 				}
-				myAgent.send(reply);
-			}
-			else {
-				block();
-			}
+				break;
+			case 3:      
+				System.out.println(itemToSell.bestBuyer.getAID()+"has won the auction");
+				break;
+			}        
 		}
-	}  // End of inner class OfferRequestsServer
+	}
 }
