@@ -15,7 +15,7 @@ public class Item implements Serializable{
     public int initialPrice;
     public int price;
     public boolean isFake;
-    public AID bestOffer;
+    public AID bestBuyer;
 
     public Item (ItemType type, ItemState state, int initialPrice, int price, boolean isFake){
         this.type = type;

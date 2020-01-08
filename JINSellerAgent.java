@@ -24,6 +24,7 @@ Boston, MA  02111-1307, USA.
 package examples.JADEAuction;
 
 import jade.core.Agent;
+import jade.core.AID;
 import jade.core.behaviours.*;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -47,17 +48,18 @@ public class JINSellerAgent extends Agent {
 	// Put agent initializations here
 	protected void setup() {
 		//initialiser l'objet à vendre.
-		
+		itemToSell = new Item(null, null, 500, 400, true);
+
 		addBehaviour(new TickerBehaviour(this, 10000) {
 			protected void onTick() {
-				System.out.println("Trying to sell "+itemToSell.name);
+				System.out.println("Trying to sell " + itemToSell.name);
 				// Update the list of seller agents
 				DFAgentDescription template = new DFAgentDescription();
 				ServiceDescription sd = new ServiceDescription();
 				sd.setType("selling");
 				template.addServices(sd);
 				try {
-					DFAgentDescription[] result = DFService.search(myAgent, template); 
+					DFAgentDescription[] result = DFService.search(myAgent, template);
 					System.out.println("Found the following buyer agents:");
 					buyerAgents = new AID[result.length];
 					for (int i = 0; i < result.length; ++i) {
@@ -91,19 +93,19 @@ public class JINSellerAgent extends Agent {
 	}*/
 	/**
 	   Inner class RequestPerformer.
-	   This is the behaviour used by Book-buyer agents to request seller 
+	   This is the behaviour used by Book-buyer agents to request seller
 	   agents the target book.
 	 */
 	private class RequestPerformer extends Behaviour {
-		private AID bestBuyer; // The agent who provides the best offer 
+		private AID bestBuyer; // The agent who provides the best offer
 		private int bestPrice;  // The best offered price
-		private List<AID> interestedBuyers = new List<AID>();
-		private bool auctionIsOn; // The auction is currently running if true
+		private List<AID> interestedBuyers = new ArrayList<AID>();
+		private boolean auctionIsOn; // The auction is currently running if true
 		private MessageTemplate mt; // The template to receive replies
 		private int step = 0;
 		private int repliesCnt = 0; // The counter of replies from interested agents.
 
-		public void action() {
+		public void action(){
 			switch (step) {
 			case 0:
 				auctionIsOn = true;
@@ -111,9 +113,14 @@ public class JINSellerAgent extends Agent {
 				ACLMessage propose = new ACLMessage(ACLMessage.PROPOSE);
 				for (int i = 0; i < buyerAgents.length; ++i) {
 					propose.addReceiver(buyerAgents[i]);
-					interestedBuyers.add(buyersAgents[i].getAID());
-				} 
-				propose.setContentObject(itemToSell);
+					interestedBuyers.add(buyerAgents[i]);
+				}
+				try {
+					propose.setContentObject(itemToSell);
+				} catch (Exception e){
+
+				}
+
 				propose.setConversationId("item-auction");
 				propose.setReplyWith("propose"+System.currentTimeMillis()); // Unique value
 				myAgent.send(propose);
@@ -123,8 +130,12 @@ public class JINSellerAgent extends Agent {
 				step = 1;
 				Thread t = new Thread(new Runnable(){
 					@Override public void run(){
-						Thread.sleep(10000);
-						auctionIsOn = false;
+						try{
+							Thread.sleep(10000);
+							auctionIsOn = false;
+						} catch (Exception e){
+
+						}
 					}
 				});
 
@@ -135,23 +146,23 @@ public class JINSellerAgent extends Agent {
 				if (reply != null) {
 					// Reply received
 					if (reply.getPerformative() == ACLMessage.PROPOSE) {
-						// This is an offer 
+						// This is an offer
 						int price = Integer.parseInt(reply.getContent());
 						if(price < 0){
-							interestedBuyers.remove(reply.getSender().getAID());
+							interestedBuyers.remove(reply.getSender());
 						}
 						if (price > bestPrice) {
 							// This is the best offer at present
 							bestPrice = price;
-							bestBuyer = reply.getSender().getAID();
+							bestBuyer = reply.getSender();
 							itemToSell.bestBuyer = bestBuyer;
 						}
 					}
 
 					repliesCnt++;
-					if (repliesCnt >= sellerAgents.length) {
+					if (repliesCnt >= interestedBuyers.size()) {
 						// We received all replies
-						step = 2; 
+						step = 2;
 					}
 				}
 				else {
@@ -162,12 +173,17 @@ public class JINSellerAgent extends Agent {
 
 				repliesCnt = 0;
 
-				// Send the cfp to all sellers
-				ACLMessage propose = new ACLMessage(ACLMessage.PROPOSE);
-				for (int i = 0; i < interestedBuyers.length; ++i) {
-					propose.addReceiver(interestedBuyers[i]);
-				} 
-				propose.setContentObject(itemToSell);
+				propose = new ACLMessage(ACLMessage.PROPOSE);
+				for (AID buyer : interestedBuyers){
+					propose.addReceiver(buyer);
+				}
+
+				try {
+					propose.setContentObject(itemToSell);
+				} catch (Exception e){
+
+				}
+
 				propose.setConversationId("item-auction");
 				propose.setReplyWith("propose"+System.currentTimeMillis()); // Unique value
 				myAgent.send(propose);
@@ -182,10 +198,17 @@ public class JINSellerAgent extends Agent {
 					step = 1;
 				}
 				break;
-			case 3:      
-				System.out.println(itemToSell.bestBuyer.getAID()+"has won the auction");
+			case 3:
+				System.out.println(itemToSell.bestBuyer + "has won the auction");
 				break;
-			}        
+			}
+		}
+
+		public boolean done() {
+			if (step == 2 && bestBuyer == null) {
+				System.out.println("Attempt failed: nobody wants to buy " + itemToSell.name);
+			}
+			return ((step == 2 && bestBuyer == null) || step == 4);
 		}
 	}
 }
