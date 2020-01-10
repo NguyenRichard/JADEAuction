@@ -47,7 +47,8 @@ public class JINSellerAgent extends Agent {
 
 	Item itemToSell;
 
-	private AID[] buyerAgents;
+	private AID[] buyerAgents; // A terme inutile, remplacé par interestedBuyers
+	private List<AID> interestedBuyers = new ArrayList<AID>();
 
 	// Put agent initializations here
 	protected void setup() {
@@ -56,7 +57,7 @@ public class JINSellerAgent extends Agent {
 
 		addBehaviour(new TickerBehaviour(this, 10000) {
 			protected void onTick() {
-				System.out.println("Trying to sell " + itemToSell.name);
+				System.out.println(getAID().getName() + " est ici pour essayer de vendre " + itemToSell.name + ".");
 				// Update the list of seller agents
 				DFAgentDescription template = new DFAgentDescription();
 				ServiceDescription sd = new ServiceDescription();
@@ -64,11 +65,11 @@ public class JINSellerAgent extends Agent {
 				template.addServices(sd);
 				try {
 					DFAgentDescription[] result = DFService.search(myAgent, template);
-					System.out.println("Found the following buyer agents:");
+					System.out.println("Le vendeur a trouvé " + result.length + " personnes sur le reseau");
 					buyerAgents = new AID[result.length];
 					for (int i = 0; i < result.length; ++i) {
 						buyerAgents[i] = result[i].getName();
-						System.out.println(buyerAgents[i].getName());
+						interestedBuyers.add(result[i].getName());
 					}
 				}
 				catch (FIPAException fe) {
@@ -103,22 +104,22 @@ public class JINSellerAgent extends Agent {
 	private class RequestPerformer extends Behaviour {
 		private AID bestBuyer; // The agent who provides the best offer
 		private int bestPrice;  // The best offered price
-		private List<AID> interestedBuyers = new ArrayList<AID>();
 		private boolean auctionIsOn; // The auction is currently running if true
 		private MessageTemplate mt; // The template to receive replies
 		private int step = 0;
 		private int repliesCnt = 0; // The counter of replies from interested agents.
 
 		public void action(){
+
 			switch (step) {
 			case 0:
 				auctionIsOn = true;
 				// Send the propose to all buyers
 				ACLMessage propose = new ACLMessage(ACLMessage.PROPOSE);
-				for (int i = 0; i < buyerAgents.length; ++i) {
-					propose.addReceiver(buyerAgents[i]);
-					interestedBuyers.add(buyerAgents[i]);
+				for (AID buyer : interestedBuyers) {
+					propose.addReceiver(buyer);
 				}
+
 				try {
 					propose.setContentObject(itemToSell);
 				} catch (Exception e){
@@ -131,17 +132,23 @@ public class JINSellerAgent extends Agent {
 				// Prepare the template to get proposals
 				mt = MessageTemplate.and(MessageTemplate.MatchConversationId("item-auction"),
 						MessageTemplate.MatchInReplyTo(propose.getReplyWith()));
+
+
 				step = 1;
+
+				//Thread qui gère la durée d'une enchère
 				Thread t = new Thread(new Runnable(){
 					@Override public void run(){
 						try{
-							Thread.sleep(10000);
+							Thread.sleep(5000);
 							auctionIsOn = false;
+							System.out.println("Enchere terminee");
 						} catch (Exception e){
 
 						}
 					}
 				});
+				t.start();
 
 				break;
 			case 1:
@@ -160,13 +167,17 @@ public class JINSellerAgent extends Agent {
 							bestPrice = price;
 							bestBuyer = reply.getSender();
 							itemToSell.bestBuyer = bestBuyer;
+							System.out.println("C'est " + bestBuyer.getName() + " qui fait actuellement la meilleure offre a " + bestPrice + " euros");
 						}
 					}
 
 					repliesCnt++;
+
 					if (repliesCnt >= interestedBuyers.size()) {
-						// We received all replies
 						step = 2;
+					}
+					if(!auctionIsOn){
+						step = 3;
 					}
 				}
 				else {
@@ -174,7 +185,6 @@ public class JINSellerAgent extends Agent {
 				}
 				break;
 			case 2:
-
 				repliesCnt = 0;
 
 				propose = new ACLMessage(ACLMessage.PROPOSE);
@@ -203,7 +213,8 @@ public class JINSellerAgent extends Agent {
 				}
 				break;
 			case 3:
-				System.out.println(itemToSell.bestBuyer + "has won the auction");
+				System.out.println("3 .. 2 .. 1 .. " + itemToSell.bestBuyer.getName() + " a remporte " + itemToSell.name);
+				myAgent.doDelete();
 				break;
 			}
 		}

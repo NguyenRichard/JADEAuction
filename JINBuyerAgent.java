@@ -35,6 +35,7 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.lang.Math;
 
 public class JINBuyerAgent extends Agent {
 	// The title of the book to buy
@@ -54,7 +55,8 @@ public class JINBuyerAgent extends Agent {
 	// Put agent initializations here
 	protected void setup() {
 		// Printout a welcome message
-		System.out.println("Hallo! Buyer-agent "+getAID().getName()+" is ready.");
+		System.out.println("Dimanche matin, 11h, dans la charmante bourgade d'Evry.");
+		System.out.println(getAID().getName()+" est la car il veut faire de bonnes affaires.");
 
 		//Ajouter la liste des objets
 		itemsToBuy = new ArrayList<Item>();
@@ -89,7 +91,8 @@ public class JINBuyerAgent extends Agent {
 		return price proposal or -1
 	**/
 	private int bid(Item item) {
-		return 0;
+		//TODO
+		return (int)(Math.random() * 100) + 1;
 	}
 
 	/**
@@ -114,8 +117,11 @@ public class JINBuyerAgent extends Agent {
 				catch(Exception e){}
 
 				if(object != null){
+
 					for(Item i : itemsToBuy){
-						if(i.type == object.type){
+
+						if(i.type == object.type && object.bestBuyer != getAID()){ //A CHANGER
+
 							int price = bid(object);
 							if(price > 0){
 								ACLMessage reply = msg.createReply();
