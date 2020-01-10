@@ -1,3 +1,3 @@
 package examples.JADEAuction;
 
-enum ItemType { VASE, PAINTING }
+public enum ItemState { NEW, GOOD, USED }

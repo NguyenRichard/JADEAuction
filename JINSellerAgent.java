@@ -23,6 +23,9 @@ Boston, MA  02111-1307, USA.
 
 package examples.JADEAuction;
 
+import examples.JADEAuction.ItemType;
+import examples.JADEAuction.ItemState;
+
 import jade.core.Agent;
 import jade.core.AID;
 import jade.core.behaviours.*;
@@ -34,6 +37,7 @@ import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 
 import java.util.*;
+
 
 public class JINSellerAgent extends Agent {
 	// The catalogue of books for sale (maps the title of a book to its price)
@@ -48,7 +52,7 @@ public class JINSellerAgent extends Agent {
 	// Put agent initializations here
 	protected void setup() {
 		//initialiser l'objet à vendre.
-		itemToSell = new Item(null, null, 500, 400, true);
+		itemToSell = new Item("La joconde", ItemType.PAINTING, ItemState.GOOD, 1000, 500, true);
 
 		addBehaviour(new TickerBehaviour(this, 10000) {
 			protected void onTick() {

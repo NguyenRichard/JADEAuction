@@ -32,11 +32,13 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
+
 import java.util.List;
+import java.util.ArrayList;
 
 public class JINBuyerAgent extends Agent {
 	// The title of the book to buy
-	private List<Item> itemsToBuy; 
+	private List<Item> itemsToBuy;
 
 	private float newItemRatio; //Ratio price from Initial price when the state is new.
 
@@ -53,8 +55,12 @@ public class JINBuyerAgent extends Agent {
 	protected void setup() {
 		// Printout a welcome message
 		System.out.println("Hallo! Buyer-agent "+getAID().getName()+" is ready.");
-		
+
 		//Ajouter la liste des objets
+		itemsToBuy = new ArrayList<Item>();
+
+		Item item = new Item("La joconde", ItemType.PAINTING, ItemState.GOOD, 0, 0, false);
+		itemsToBuy.add(item);
 
 		DFAgentDescription dfd = new DFAgentDescription();
 		ServiceDescription sd = new ServiceDescription();
@@ -124,6 +130,6 @@ public class JINBuyerAgent extends Agent {
 				block();
 			}
 		}
-		
+
 	}  // End of inner class RequestPerformer
 }
