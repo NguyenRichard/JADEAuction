@@ -36,6 +36,7 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import java.util.List;
 import java.util.ArrayList;
 import java.lang.Math;
+import java.util.Random;
 
 public class JINBuyerAgent extends Agent {
 	// The title of the book to buy
@@ -92,7 +93,10 @@ public class JINBuyerAgent extends Agent {
 	**/
 	private int bid(Item item) {
 		//TODO
-		return (int)(Math.random() * 100) + 1;
+		Random rnd = new Random();
+
+		return rnd.nextInt(1000 - item.currentBestPriceProposed) + item.currentBestPriceProposed; //POur ne pas proposer en dessous du prix de la meilleure offre
+		//return (int)(Math.random() * 100) + 1;
 	}
 
 	/**
@@ -120,14 +124,28 @@ public class JINBuyerAgent extends Agent {
 
 					for(Item i : itemsToBuy){
 
-						if(i.type == object.type && object.bestBuyer != getAID()){ //A CHANGER
-
-							int price = bid(object);
-							if(price > 0){
-								ACLMessage reply = msg.createReply();
-								reply.setContent(Integer.toString(price));
-								myAgent.send(reply);
+						if(i.type == object.type){ //A CHANGER
+							boolean canPropose = true;
+							if (object.bestBuyer != null){
+								if (object.bestBuyer.getName().compareTo(getAID().getName()) == 0){
+									canPropose = false;
+								}
 							}
+							if (canPropose){
+								int price = bid(object);
+								if(price > 0){
+									ACLMessage reply = msg.createReply();
+									reply.setContent(Integer.toString(price));
+									myAgent.send(reply);
+									try{
+										Thread.sleep(200);
+										//Simul eun temps d'attente
+									} catch (Exception e){
+
+									}
+								}
+							}
+
 						}
 					}
 				}

@@ -50,22 +50,34 @@ public class JINSellerAgent extends Agent {
 	private AID[] buyerAgents; // A terme inutile, remplacé par interestedBuyers
 	private List<AID> interestedBuyers = new ArrayList<AID>();
 
+	private boolean isAuctionStarted = false;
+
 	// Put agent initializations here
 	protected void setup() {
 		//initialiser l'objet à vendre.
 		itemToSell = new Item("La joconde", ItemType.PAINTING, ItemState.GOOD, 1000, 500, true);
 
-		addBehaviour(new TickerBehaviour(this, 10000) {
+		addBehaviour(new TickerBehaviour(this, 1000) {
 			protected void onTick() {
-				System.out.println(getAID().getName() + " est ici pour essayer de vendre " + itemToSell.name + ".");
+
+
 				// Update the list of seller agents
 				DFAgentDescription template = new DFAgentDescription();
 				ServiceDescription sd = new ServiceDescription();
+
 				sd.setType("selling");
 				template.addServices(sd);
 				try {
 					DFAgentDescription[] result = DFService.search(myAgent, template);
-					System.out.println("Le vendeur a trouvé " + result.length + " personnes sur le reseau");
+
+					//Message de setup
+					if (!isAuctionStarted){
+						System.out.println(getAID().getName() + " est ici pour essayer de vendre " + itemToSell.name + ".");
+						System.out.println("Le vendeur a trouvé " + result.length + " personnes sur le reseau");
+						isAuctionStarted = true;
+					}
+
+
 					buyerAgents = new AID[result.length];
 					for (int i = 0; i < result.length; ++i) {
 						buyerAgents[i] = result[i].getName();
@@ -142,7 +154,6 @@ public class JINSellerAgent extends Agent {
 						try{
 							Thread.sleep(5000);
 							auctionIsOn = false;
-							System.out.println("Enchere terminee");
 						} catch (Exception e){
 
 						}
@@ -152,6 +163,9 @@ public class JINSellerAgent extends Agent {
 
 				break;
 			case 1:
+				if(!auctionIsOn){
+					step = 3;
+				}
 				// Receive all proposals from buyer agents
 				ACLMessage reply = myAgent.receive(mt);
 				if (reply != null) {
@@ -159,12 +173,13 @@ public class JINSellerAgent extends Agent {
 					if (reply.getPerformative() == ACLMessage.PROPOSE) {
 						// This is an offer
 						int price = Integer.parseInt(reply.getContent());
-						if(price < 0){
+						if(price <= bestPrice){
 							interestedBuyers.remove(reply.getSender());
 						}
 						if (price > bestPrice) {
 							// This is the best offer at present
 							bestPrice = price;
+							itemToSell.currentBestPriceProposed = price;
 							bestBuyer = reply.getSender();
 							itemToSell.bestBuyer = bestBuyer;
 							System.out.println("C'est " + bestBuyer.getName() + " qui fait actuellement la meilleure offre a " + bestPrice + " euros");
@@ -176,9 +191,7 @@ public class JINSellerAgent extends Agent {
 					if (repliesCnt >= interestedBuyers.size()) {
 						step = 2;
 					}
-					if(!auctionIsOn){
-						step = 3;
-					}
+
 				}
 				else {
 					block();
@@ -205,7 +218,7 @@ public class JINSellerAgent extends Agent {
 				mt = MessageTemplate.and(MessageTemplate.MatchConversationId("item-auction"),
 						MessageTemplate.MatchInReplyTo(propose.getReplyWith()));
 
-				if(!auctionIsOn){
+				if(!auctionIsOn || interestedBuyers.size() <= 1){
 					step = 3;
 				}
 				else{

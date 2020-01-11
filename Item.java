@@ -16,6 +16,7 @@ public class Item implements Serializable{
     public int price;
     public boolean isFake;
     public AID bestBuyer;
+    public int currentBestPriceProposed;
 
     public Item (String name, ItemType type, ItemState state, int initialPrice, int price, boolean isFake){
 
