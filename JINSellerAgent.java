@@ -173,7 +173,7 @@ public class JINSellerAgent extends Agent {
 					if (reply.getPerformative() == ACLMessage.PROPOSE) {
 						// This is an offer
 						int price = Integer.parseInt(reply.getContent());
-						if(price <= bestPrice){
+						if(price < 0){
 							interestedBuyers.remove(reply.getSender());
 						}
 						if (price > bestPrice) {

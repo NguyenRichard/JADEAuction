@@ -57,12 +57,22 @@ public class JINBuyerAgent extends Agent {
 	protected void setup() {
 		// Printout a welcome message
 		System.out.println("Dimanche matin, 11h, dans la charmante bourgade d'Evry.");
-		System.out.println(getAID().getName()+" est la car il veut faire de bonnes affaires.");
+
+		Random rnd = new Random();
+
+
+		newItemRatio = 0.8f + (float)rnd.nextInt(20)/100;
+		goodItemRatio = 0.6f + (float)rnd.nextInt(20)/100;
+		usedItemRatio = 0.4f + (float)rnd.nextInt(20)/100;
+
+		probabilityPayMore = (float)rnd.nextInt(10)/100;
+
+		System.out.println(getAID().getName()+"("+newItemRatio+","+goodItemRatio+","+usedItemRatio+","+probabilityPayMore+")"+" est la car il veut faire de bonnes affaires.");
 
 		//Ajouter la liste des objets
 		itemsToBuy = new ArrayList<Item>();
 
-		Item item = new Item("La joconde", ItemType.PAINTING, ItemState.GOOD, 0, 0, false);
+		Item item = new Item("La joconde", ItemType.PAINTING, ItemState.GOOD, 1000, 0, false);
 		itemsToBuy.add(item);
 
 		DFAgentDescription dfd = new DFAgentDescription();
@@ -95,7 +105,42 @@ public class JINBuyerAgent extends Agent {
 		//TODO
 		Random rnd = new Random();
 
-		return rnd.nextInt(1000 - item.currentBestPriceProposed) + item.currentBestPriceProposed; //POur ne pas proposer en dessous du prix de la meilleure offre
+		int maxPrice = item.initialPrice;
+
+		switch(item.state){
+			case NEW:
+				maxPrice = Math.round(maxPrice*newItemRatio);
+			break;
+			case GOOD:
+				maxPrice = Math.round(maxPrice*goodItemRatio);
+			break;
+			case USED:
+				maxPrice = Math.round(maxPrice*usedItemRatio);
+			break;
+			default:
+			break;
+		}
+
+		if(item.currentBestPriceProposed < maxPrice){
+			return rnd.nextInt(maxPrice - item.currentBestPriceProposed) + item.currentBestPriceProposed; //Pour ne pas proposer en dessous du prix de la meilleure offre
+
+		}else{
+			if((float)rnd.nextInt(100)/100 < probabilityPayMore){
+				int overprice = maxPrice + (int)maxPrice*rnd.nextInt(10)/100;
+				if(overprice > item.currentBestPriceProposed){
+					if(overprice < item.initialPrice){
+						return overprice;
+					}
+					else{
+						return item.initialPrice;
+					}
+				}
+			}
+		}
+
+		return -1;
+
+		//return rnd.nextInt(1000 - item.currentBestPriceProposed) + item.currentBestPriceProposed;
 		//return (int)(Math.random() * 100) + 1;
 	}
 
