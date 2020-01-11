@@ -126,9 +126,11 @@ public class JINBuyerAgent extends Agent {
 
 		}else{
 			if((float)rnd.nextInt(100)/100 < probabilityPayMore){
-				int overprice = maxPrice + (int)maxPrice*rnd.nextInt(10)/100;
+				float overpriceRatio = (float)rnd.nextInt(10)/100;
+				int overprice = maxPrice + Math.round(maxPrice*overpriceRatio);
 				if(overprice > item.currentBestPriceProposed){
-					if(overprice < item.initialPrice){
+					System.out.println(getAID().getName()+" joue le tout pour le tout! Il mise "+overpriceRatio*100+"% de plus que sa limite!");
+					if(overprice <= item.initialPrice){
 						return overprice;
 					}
 					else{
@@ -178,10 +180,10 @@ public class JINBuyerAgent extends Agent {
 							}
 							if (canPropose){
 								int price = bid(object);
+								ACLMessage reply = msg.createReply();
+								reply.setContent(Integer.toString(price));
+								myAgent.send(reply);
 								if(price > 0){
-									ACLMessage reply = msg.createReply();
-									reply.setContent(Integer.toString(price));
-									myAgent.send(reply);
 									try{
 										Thread.sleep(200);
 										//Simul eun temps d'attente
