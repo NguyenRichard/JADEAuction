@@ -1,5 +1,7 @@
 # JADEAuction
 
+To compile all the classes, you can launch make.ps1
+
 This project have 2 different agents: A seller and a buyer.
 To launch an auction, you must launch all the buyers first.
 At the moment, they will all want to buy one "La Joconde" but you can initialize it differently in JINBuyerAgent.java.
