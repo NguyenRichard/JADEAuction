@@ -156,43 +156,75 @@ public class JINBuyerAgent extends Agent {
 
 		public void action() {
 
-			mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE);
+			//mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE);
 			ACLMessage msg = myAgent.receive(mt);
 
 
 			if(msg != null){
-				Item object = null;
-				try{
-					object = (Item) msg.getContentObject();
-				}
-				catch(Exception e){}
 
-				if(object != null){
+				if(msg.getPerformative() == ACLMessage.PROPOSE){
 
-					for(Item i : itemsToBuy){
+					Item object = null;
+					try{
+						object = (Item) msg.getContentObject();
+					}
+					catch(Exception e){}
 
-						if(i.type == object.type){ //A CHANGER
-							boolean canPropose = true;
-							if (object.bestBuyer != null){
-								if (object.bestBuyer.getName().compareTo(getAID().getName()) == 0){
-									canPropose = false;
-								}
-							}
-							if (canPropose){
-								int price = bid(object);
-								ACLMessage reply = msg.createReply();
-								reply.setContent(Integer.toString(price));
-								myAgent.send(reply);
-								if(price > 0){
-									try{
-										Thread.sleep(200);
-										//Simul eun temps d'attente
-									} catch (Exception e){
+					if(object != null){
 
+						for(Item i : itemsToBuy){
+
+							if(i.type == object.type){ //A CHANGER
+								boolean canPropose = true;
+								if (object.bestBuyer != null){
+									if (object.bestBuyer.getName().compareTo(getAID().getName()) == 0){
+										canPropose = false;
 									}
 								}
-							}
+								if (canPropose){
+									int price = bid(object);
+									ACLMessage reply = msg.createReply();
+									reply.setContent(Integer.toString(price));
+									myAgent.send(reply);
+									if(price > 0){
+										try{
+											Thread.sleep(200);
+											//Simule un temps d'attente
+										} catch (Exception e){
 
+										}
+									}
+								}
+
+								return;
+							}
+						}
+
+						//if the agent is not interested
+
+						int price = -1; //send not interested to seller.
+						ACLMessage reply = msg.createReply();
+						reply.setContent(Integer.toString(price));
+						myAgent.send(reply);
+
+					}
+				}
+				else if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
+					Item object = null;
+					try{
+						object = (Item) msg.getContentObject();
+					}
+					catch(Exception e){}
+					if(object != null){
+
+						for(Item i : itemsToBuy){
+							if(i.type == object.type){
+								itemsToBuy.remove(i);
+								if(itemsToBuy.size() <= 0){
+								 	System.out.println(getAID().getName()+" a acheté tout les objets qu'il voulait.");
+								}	
+								return;
+							}
 						}
 					}
 				}
